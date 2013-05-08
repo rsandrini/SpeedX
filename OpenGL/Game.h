@@ -21,9 +21,8 @@ class Game : public GameSteps
 		void drawTunnel() const;
 		void generateMap() const;
 		void rebuildMap() const;
-		void realocPosition(int position) const;
-		void generateOneRing() const;
-		void drawQuad() const;
+		void drawObstacle(int position) const;
+		void generateRing(int i) const;
 };
 
 #endif // ROTATINGTRIANGLE_H_INCLUDED
