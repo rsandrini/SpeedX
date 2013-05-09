@@ -12,6 +12,10 @@ float end = 0;
 bool left;
 bool right;
 float rotate;
+float cameraSpeed=0.01f;
+
+/* [0]- Game Run [1]- GameOver  [-1]-Pause */
+int gameState; 
 
 
 void Game::setup()
@@ -22,7 +26,7 @@ void Game::setup()
 	/*glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);*/
 	glEnable(GL_SMOOTH);
-	
+	gameState = 0;
 	rotate = 0.0f;
 	// Definição de luz 
 	/*glEnable(GL_LIGHTING);
@@ -49,30 +53,31 @@ void Game::processEvents(const SDL_Event& event)
     }
 	// KEYBOARD
 	
-	if(GetKeyState(VK_UP) & 0x80) 
-	{	
-		objCamera.Move_Camera(CAMERASPEED);
-	}
+	if (gameState == 0){
+		if(GetKeyState(VK_UP) & 0x80) 
+		{	
+			objCamera.Move_Camera(CAMERASPEED);
+		}
 
-	if(GetKeyState(VK_DOWN) & 0x80) 
-	{
-		objCamera.Move_Camera(-CAMERASPEED);
-	}
+		if(GetKeyState(VK_DOWN) & 0x80) 
+		{
+			objCamera.Move_Camera(-CAMERASPEED);
+		}
 	
-	if(GetKeyState(VK_LEFT) & 0x80) 
-	{	
-		left = !left; // Chifre do bode
-		if (right)
-			right = false;
-	}
+		if(GetKeyState(VK_LEFT) & 0x80) 
+		{	
+			left = !left; // Chifre do bode
+			if (right)
+				right = false;
+		}
 
-	if(GetKeyState(VK_RIGHT) & 0x80) 
-	{
-		right = !right; // Chifre do bode
-		if (left)
-			left = false;
+		if(GetKeyState(VK_RIGHT) & 0x80) 
+		{
+			right = !right; // Chifre do bode
+			if (left)
+				left = false;
+		}
 	}
-
 
 
 }
@@ -82,26 +87,67 @@ void Game::processLogics(float secs)
     //Lemos o estado das teclas
     Uint8* keys = SDL_GetKeyState(NULL);
 	
-	objCamera.Move_Camera(CAMERASPEED);
+
+	if (gameState == 1){
+		objCamera.Move_Camera(cameraSpeed);
+		cameraSpeed+=0.00001f;
+
+		rebuildMap();
+
+		// because rotation is clockwise 
+		if (left)
+			rotate = rotate - 3.0f;
+			if (rotate < 0)
+				rotate = 360.0f;
+		if (right)
+			rotate += 3.0f;
+			if (rotate > 360)
+				rotate = 0;
+
+		if (colision()){
+			printf("GameOver\n");
+
+		}
+	}
 	
-	rebuildMap();
+	if (gameState == -1){
+	
+		+printf("PAUSE\n");
+	}
 
-	// because rotation is clockwise 
-	if (left)
-		rotate = rotate - 3.0f;
-		if (rotate < 0)
-			rotate = 360.0f;
-	if (right)
-		rotate += 3.0f;
-		if (rotate > 360)
-			rotate = 0;
-
+	if (gameState == 0){
+		printf("GameOver");
+	}
 	/*
 	printf("POS [%.2f %.2f %.2f] VIEW [%.2f %.2f %.2f] UP [%.2f %.2f %.2f] \n",
 		    objCamera.mPos.x,  objCamera.mPos.y,  objCamera.mPos.z,	
 			objCamera.mView.x, objCamera.mView.y, objCamera.mView.z,	
 			objCamera.mUp.x,   objCamera.mUp.y,   objCamera.mUp.z);
 	*/
+}
+
+
+bool Game::colision(){
+	for (int i=0; i<20; i++){
+		if (buffer[i].x > 0){
+			int local = (int)buffer[0].x;
+			printf("%f %f \n", buffer[i].y, objCamera.mView.z+1.5f);
+			float cameraView = objCamera.mView.z+1.5f;
+			switch(local){
+				case 1:
+					if (cameraView >= buffer[i].y && cameraView <= buffer[i].z){
+						printf("COLISAO\n");
+						gameStatus = 1;
+					}
+					break;
+				/*
+				case 2:
+					if()
+				*/
+			}
+		}
+	}
+	return false;
 }
 
 void Game::draw() const
@@ -123,7 +169,7 @@ void Game::draw() const
 void Game::rebuildMap() const{
 
 	int lastInvalid = 0;
-	for (int i=0; i<=20; i++){
+	for (int i=0; i<20; i++){
 		if((objCamera.mPos.z) < buffer[i].z){
 			lastInvalid = i;
 		}
@@ -135,27 +181,26 @@ void Game::rebuildMap() const{
 
 	if (lastInvalid > 0){
 		int c = 0;
-		for (int i=lastInvalid; i<=20; i++){
+		for (int i=lastInvalid; i<20; i++){
 		
 			buffer[c] = buffer[i];
 			color[c] = color[i];
 			c++;
 		}
 
-		for (int i=c; i<=20; i++){
+		for (int i=c; i<20; i++){
 			generateRing(i);
 		}
 	}
-
-	/*printf("\n\n\n");
-	for(int i=0; i<=20; i++){
-		printf("REALOC COLOR %f %f %f\n", color[i].x, color[i].y, color[i].z);
-	}*/
 }
 
 void Game::drawObstacle(int position) const{
 
 	int local = buffer[position].x;
+	
+	// Local debug
+	local = 1;
+	
 	float _end = buffer[position].y;
 	float _endLast = buffer[position].z;
 
@@ -477,7 +522,7 @@ void Game::drawObstacle(int position) const{
 
 void Game::generateMap()  const{
 
-	for (int i=0; i<=20; i++){
+	for (int i=0; i<20; i++){
 		generateRing(i);
 	}
 }
@@ -487,22 +532,14 @@ void Game::generateRing(int i) const{
 	color[i].y = (float)rand()/((float)RAND_MAX/1.0f);
 	color[i].z = (float)rand()/((float)RAND_MAX/1.0f);
 
-	printf("RANDOM %f %f %f\n", color[i].x, color[i].y, color[i].z);
-	printf("\n\n");
-	for(int i=0; i<=20; i++){
-		printf("REALOC COLOR %f %f %f\n", color[i].x, color[i].y, color[i].z);
-	}
-
-
 	if( rand()/(RAND_MAX/10) >= 7 )
-		buffer[i].x = (float)rand()/((float)RAND_MAX/12.0f);
+		buffer[i].x = (float)rand()/((float)RAND_MAX/15.0f);
 	else
 		buffer[i].x = 0;
 
 	buffer[i].y = end;
 	buffer[i].z = lastEnd;
 
-	// Increment lasEnd
 	end = lastEnd;
 	lastEnd -= 0.5f;
 }
@@ -514,7 +551,7 @@ void Game::drawTunnel() const
 
 	//glRotatef(20.0f, rotate, 0.0f, 0.0f);
 	glRotatef(rotate, 0, 0, 1);
-	for(int i=0; i<=20; i++){
+	for(int i=0; i<20; i++){
 		_end = buffer[i].y;
 		_endLast = buffer[i].z;
 

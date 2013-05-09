@@ -23,6 +23,7 @@ class Game : public GameSteps
 		void rebuildMap() const;
 		void drawObstacle(int position) const;
 		void generateRing(int i) const;
+		bool colision();
 };
 
 #endif // ROTATINGTRIANGLE_H_INCLUDED
