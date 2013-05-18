@@ -3,6 +3,7 @@
 #include "Camera.h"
 #include <time.h>
 
+
 CCamera objCamera; 
 tVector3 buffer[20]; // The buffer complete for draw the tunnel
 tVector3 color[20];
@@ -13,7 +14,10 @@ bool left;
 bool right;
 float rotate;
 float cameraSpeed=0.01f;
-
+float view = 0.0f;
+//Posição da Luz
+float posicao[] = {0.0, 0.0, 0.0, 1.0};
+float speed = 0.00005f;
 /* [0]- Game Run [1]- GameOver  [-1]-Pause */
 int gameState; 
 
@@ -26,13 +30,44 @@ void Game::setup()
 	/*glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);*/
 	glEnable(GL_SMOOTH);
-	gameState = 0;
+	gameState = 1;
 	rotate = 0.0f;
-	// Definição de luz 
-	/*glEnable(GL_LIGHTING);
-	float ambientLight[] = {0.55f, 0.55f, 0.55f};
-	glLightModelfv(GL_LIGHT_MODEL_AMBIENT, ambientLight);
-	*/
+	
+	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
+	//glEnable(GL_LIGHTING);
+	//glEnable(GL_LIGHT0);
+
+	//Valor para os componentes ambiente e difuso
+	float ambient[] = {0.2f, 0.2f, 0.2f, 1.0f};
+	float diffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
+	float specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+
+	// Tipo de material - reflexão
+	glMaterialfv(GL_LIGHT0, GL_AMBIENT, ambient);
+	glMaterialfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
+	glMaterialfv(GL_LIGHT0, GL_SPECULAR, specular);
+
+	//Posição da Luz
+	float posicao[] = {2.0, 2.0, 1.0, 1.0};
+	glLightfv(GL_LIGHT0, GL_POSITION, posicao);
+
+	//Faça a luz
+	glEnable(GL_LIGHT0);
+
+
+	//Create font
+	GLuint textureName;
+	glGenTextures(1, &textureName);
+	PixelPerfectGLFont font;
+	try {
+		font.Create("fonts/quad20.glf", textureName);
+	}
+	catch(GLFontError::InvalidFile) {
+		cerr << "Cannot load font\n";
+		abort();
+	}
+
+
 	glMatrixMode(GL_PROJECTION);
 		gluPerspective(45, GAMEWINDOW.getRatio(), 0.1, 10);
 	glMatrixMode(GL_MODELVIEW);
@@ -51,68 +86,48 @@ void Game::processEvents(const SDL_Event& event)
             exit = true;
             break;
     }
-	// KEYBOARD
-	
-	if (gameState == 0){
-		if(GetKeyState(VK_UP) & 0x80) 
-		{	
-			objCamera.Move_Camera(CAMERASPEED);
-		}
-
-		if(GetKeyState(VK_DOWN) & 0x80) 
-		{
-			objCamera.Move_Camera(-CAMERASPEED);
-		}
-	
-		if(GetKeyState(VK_LEFT) & 0x80) 
-		{	
-			left = !left; // Chifre do bode
-			if (right)
-				right = false;
-		}
-
-		if(GetKeyState(VK_RIGHT) & 0x80) 
-		{
-			right = !right; // Chifre do bode
-			if (left)
-				left = false;
-		}
-	}
-
-
 }
 
 void Game::processLogics(float secs)
 {
     //Lemos o estado das teclas
     Uint8* keys = SDL_GetKeyState(NULL);
-	
 
 	if (gameState == 1){
+		view = objCamera.mView.z + 1.5;
 		objCamera.Move_Camera(cameraSpeed);
-		cameraSpeed+=0.00001f;
+		cameraSpeed+=speed;
 
 		rebuildMap();
 
-		// because rotation is clockwise 
-		if (left)
-			rotate = rotate - 3.0f;
+		// Move light
+		posicao[0] = objCamera.mView.x;
+		posicao[1] = objCamera.mView.y;
+		posicao[2] = objCamera.mView.z;
+				
+		//glLightfv(GL_LIGHT0, GL_POSITION, posicao);
+
+		if(GetKeyState(VK_LEFT) & 0x80) 
+		{	
+			rotate -= 3.0f;
 			if (rotate < 0)
 				rotate = 360.0f;
-		if (right)
+		}
+
+		if(GetKeyState(VK_RIGHT) & 0x80) 
+		{
 			rotate += 3.0f;
 			if (rotate > 360)
 				rotate = 0;
-
-		if (colision()){
-			printf("GameOver\n");
-
 		}
+
+		// Check collision
+		colision();
 	}
 	
 	if (gameState == -1){
 	
-		+printf("PAUSE\n");
+		printf("PAUSE\n");
 	}
 
 	if (gameState == 0){
@@ -126,28 +141,95 @@ void Game::processLogics(float secs)
 	*/
 }
 
-
-bool Game::colision(){
+void Game::colision(){
+	printf("%f\n", rotate);
 	for (int i=0; i<20; i++){
+		
 		if (buffer[i].x > 0){
-			int local = (int)buffer[0].x;
-			printf("%f %f \n", buffer[i].y, objCamera.mView.z+1.5f);
-			float cameraView = objCamera.mView.z+1.5f;
-			switch(local){
-				case 1:
-					if (cameraView >= buffer[i].y && cameraView <= buffer[i].z){
-						printf("COLISAO\n");
-						gameStatus = 1;
-					}
-					break;
-				/*
-				case 2:
-					if()
-				*/
+			int local = (int)buffer[i].x;
+			// Check if view and obstacle colide
+			if (view <= buffer[i].y && view >= buffer[i].z){
+				switch(local){
+					case 1:
+						//printf("%f <= %f AND >= %f \n", view, buffer[i].y, buffer[i].z );
+						//printf("%f\n", rotate);
+							if ((rotate >= 337.5 && rotate <= 360) || (rotate >= 0 && rotate <= 22.5)) 
+								gameState = 0;
+					
+						break;	
+					case 12:						
+							if (rotate >= 315 && rotate <= 337.5) 
+								gameState = 0;
+					
+						break;	
+					case 11:						
+							if (rotate >= 292.5 && rotate <= 315) 
+								gameState = 0;
+					
+						break;	
+					case 10:						
+							if (rotate >= 247.5 && rotate <= 292.5) 
+								gameState = 0;
+					
+						break;	
+					case 9:						
+							if (rotate >= 225.5 && rotate <= 247.5) 
+								gameState = 0;
+					
+						break;	
+					case 8:						
+							if (rotate >= 202.5 && rotate <= 225.5) 
+								gameState = 0;
+					
+						break;	
+					case 7:						
+							if (rotate >= 157.5 && rotate <= 202.5) 
+								gameState = 0;
+					
+						break;	
+					case 6:						
+							if (rotate >= 135 && rotate <= 157.5) 
+								gameState = 0;
+					
+						break;	
+					case 5:						
+							if (rotate >= 102.5 && rotate <= 135.5) 
+								gameState = 0;
+					
+						break;	
+					case 4:						
+							if (rotate >= 112.5 && rotate <= 67.5) 
+								gameState = 0;
+					
+						break;	
+					case 3:						
+							if (rotate >= 45 && rotate <= 67.5) 
+								gameState = 0;
+					
+						break;	
+					case 2:						
+							if (rotate >= 22.5 && rotate <= 45) 
+								gameState = 0;
+					
+						break;	
+
+					// The big cubes
+					case 13:						
+							if ((rotate >= 337.5 && rotate <= 360) || (rotate >= 0 && rotate <= 22.5)
+								|| (rotate >= 157.5 && rotate <= 202.5)) 
+								gameState = 0;
+					
+						break;	
+					case 14:						
+							if ((rotate >= 67.5 && rotate <= 102.5) || (rotate >= 247.5 && rotate <= 292.5)) 
+								gameState = 0;
+					
+						break;	
+
+				}
 			}
 		}
 	}
-	return false;
 }
 
 void Game::draw() const
@@ -163,6 +245,17 @@ void Game::draw() const
 	
 	//glLoadIdentity();
 	drawTunnel();
+
+	/*Draw a point vision
+	glColor3f(1.0, 1.0, 1.0);
+	glBegin(GL_POLYGON);	
+		glNormal3f( 0.0, 0.0, -1.0);	
+		glVertex3f( 0.15, -0.65, view );
+		glVertex3f( 0.15, -0.35, view );
+		glVertex3f( -0.15, -0.35, view );
+		glVertex3f( -0.15, -0.65, view );
+	glEnd();
+	*/
 }
 
 // Remove the quads out of view and create new's in the finish tunnel
@@ -198,15 +291,13 @@ void Game::drawObstacle(int position) const{
 
 	int local = buffer[position].x;
 	
-	// Local debug
-	local = 1;
-	
 	float _end = buffer[position].y;
 	float _endLast = buffer[position].z;
 
 	glColor3f(color[position].x, color[position].y, color[position].z); 
 	switch (local){
 		
+		// Cube normal
 		case 1:
 			// FRONT
 			glBegin(GL_POLYGON);
@@ -270,6 +361,7 @@ void Game::drawObstacle(int position) const{
 			glEnd();
 			break;
 
+		// Cube normal in 270º
 		case 4:
 			// FRONT
 			glBegin(GL_POLYGON);
@@ -333,6 +425,7 @@ void Game::drawObstacle(int position) const{
 			glEnd();
 			break;
 
+		// Cube normal in 180º
 		case 7:
 			glBegin(GL_POLYGON);
 				glColor3f( 1.0, 1.0, 1.0 );
@@ -395,6 +488,7 @@ void Game::drawObstacle(int position) const{
 			glEnd();
 			break;
 
+		// Cube normal in 90º
 		case 10:
 			// FRONT
 			glBegin(GL_POLYGON);
@@ -457,6 +551,8 @@ void Game::drawObstacle(int position) const{
 				glVertex3f( 0.45, -0.45, _end );
 			glEnd();
 			break;
+
+		// Long normal Vertical
 		case 13:
 
 			// FRONT
@@ -488,6 +584,7 @@ void Game::drawObstacle(int position) const{
 			glEnd();
 			break;
 
+		// Cube normal horizontal
 		case 14:
 			// TOP
 			glBegin(GL_POLYGON);
@@ -548,6 +645,14 @@ void Game::drawTunnel() const
 {
 	float _end = 0;
 	float _endLast = 0;
+
+	float black[] = {0.0, 0.0, 0.0, 1.0};
+	float green[] = {0.0, 1.0, 0.0, 1.0};
+	float white[] = {1.0, 1.0, 1.0, 1.0};
+	glMaterialfv(GL_FRONT, GL_AMBIENT, green);
+	glMaterialfv(GL_FRONT, GL_DIFFUSE, green);
+	glMaterialfv(GL_FRONT, GL_SPECULAR, white);
+	glMaterialf(GL_FRONT, GL_SHININESS, 50.0);
 
 	//glRotatef(20.0f, rotate, 0.0f, 0.0f);
 	glRotatef(rotate, 0, 0, 1);
