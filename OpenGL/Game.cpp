@@ -54,20 +54,6 @@ void Game::setup()
 	//Faça a luz
 	glEnable(GL_LIGHT0);
 
-
-	//Create font
-	GLuint textureName;
-	glGenTextures(1, &textureName);
-	PixelPerfectGLFont font;
-	try {
-		font.Create("fonts/quad20.glf", textureName);
-	}
-	catch(GLFontError::InvalidFile) {
-		cerr << "Cannot load font\n";
-		abort();
-	}
-
-
 	glMatrixMode(GL_PROJECTION);
 		gluPerspective(45, GAMEWINDOW.getRatio(), 0.1, 10);
 	glMatrixMode(GL_MODELVIEW);
