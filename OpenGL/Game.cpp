@@ -5,18 +5,21 @@
 
 
 CCamera objCamera; 
-tVector3 buffer[20]; // The buffer complete for draw the tunnel
-tVector3 color[20];
+const int sA = 30;
+tVector3 buffer[sA]; // The buffer complete for draw the tunnel
+tVector3 color[sA];
 
 float lastEnd = -0.5f; // The deepest part of the quad
-float end = 0;
+float end = 0; 
 bool left;
 bool right;
 float rotate;
 float cameraSpeed=0.01f;
 float view = 0.0f;
+
 //Posição da Luz
 float posicao[] = {0.0, 0.0, 0.0, 1.0};
+// Speed sum
 float speed = 0.00005f;
 /* [0]- Game Run [1]- GameOver  [-1]-Pause */
 int gameState; 
@@ -30,35 +33,45 @@ void Game::setup()
 	/*glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);*/
 	glEnable(GL_SMOOTH);
+	glEnable (GL_LINE_SMOOTH);
+	glHint (GL_LINE_SMOOTH_HINT, GL_NICEST);
+	//glEnable(GL_BLEND); 
+	
 	gameState = 1;
 	rotate = 0.0f;
 	
-	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_TRUE);
-	//glEnable(GL_LIGHTING);
-	//glEnable(GL_LIGHT0);
+	glLightModeli(GL_LIGHT_MODEL_LOCAL_VIEWER, GL_FALSE);
+	//GLfloat light_ambient[] = {0, 0, 0, 1.0};
+	//glLightfv(GL_LIGHT0, GL_AND_INVERTED, light_ambient);
+	
+//	glLightf(GL_LIGHT0, GL_SPOT_CUTOFF, 45);
+//	GLfloat spot_direction[] = { 0, 0, -1 };
+//	glLightfv(GL_LIGHT0, GL_SPOT_DIRECTION, spot_direction);
+
+	glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHT0);
 
 	//Valor para os componentes ambiente e difuso
+	/*
 	float ambient[] = {0.2f, 0.2f, 0.2f, 1.0f};
 	float diffuse[] = {0.8f, 0.8f, 0.8f, 1.0f};
 	float specular[] = {1.0f, 1.0f, 1.0f, 1.0f};
+	
 
 	// Tipo de material - reflexão
 	glMaterialfv(GL_LIGHT0, GL_AMBIENT, ambient);
 	glMaterialfv(GL_LIGHT0, GL_DIFFUSE, diffuse);
 	glMaterialfv(GL_LIGHT0, GL_SPECULAR, specular);
-
+	*/
+	
 	//Posição da Luz
-	float posicao[] = {2.0, 2.0, 1.0, 1.0};
-	glLightfv(GL_LIGHT0, GL_POSITION, posicao);
-
-	//Faça a luz
-	glEnable(GL_LIGHT0);
+	//glLightfv(GL_LIGHT0, GL_POSITION, posicao);
 
 	glMatrixMode(GL_PROJECTION);
 		gluPerspective(45, GAMEWINDOW.getRatio(), 0.1, 10);
 	glMatrixMode(GL_MODELVIEW);
 	glLoadIdentity();
-	objCamera.Position_Camera(0, -0.5f, 2,  0, 0.0f, 0,   0, 0, 0.5);
+	objCamera.Position_Camera(0, -0.5f, 2,  0, 0, 0,  0, 0, 0.5);
 	srand(time(0));
 	generateMap();
 
@@ -80,6 +93,7 @@ void Game::processLogics(float secs)
     Uint8* keys = SDL_GetKeyState(NULL);
 
 	if (gameState == 1){
+
 		view = objCamera.mView.z + 1.5;
 		objCamera.Move_Camera(cameraSpeed);
 		cameraSpeed+=speed;
@@ -87,11 +101,10 @@ void Game::processLogics(float secs)
 		rebuildMap();
 
 		// Move light
-		posicao[0] = objCamera.mView.x;
-		posicao[1] = objCamera.mView.y;
-		posicao[2] = objCamera.mView.z;
-				
-		//glLightfv(GL_LIGHT0, GL_POSITION, posicao);
+		//posicao[0] = objCamera.mPos.x;
+		//posicao[1] = objCamera.mPos.y;
+		posicao[2] = objCamera.mPos.z ;
+		glLightfv(GL_LIGHT0, GL_POSITION, posicao);
 
 		if(GetKeyState(VK_LEFT) & 0x80) 
 		{	
@@ -128,8 +141,7 @@ void Game::processLogics(float secs)
 }
 
 void Game::colision(){
-	printf("%f\n", rotate);
-	for (int i=0; i<20; i++){
+	for (int i=0; i<sA; i++){
 		
 		if (buffer[i].x > 0){
 			int local = (int)buffer[i].x;
@@ -137,8 +149,6 @@ void Game::colision(){
 			if (view <= buffer[i].y && view >= buffer[i].z){
 				switch(local){
 					case 1:
-						//printf("%f <= %f AND >= %f \n", view, buffer[i].y, buffer[i].z );
-						//printf("%f\n", rotate);
 							if ((rotate >= 337.5 && rotate <= 360) || (rotate >= 0 && rotate <= 22.5)) 
 								gameState = 0;
 					
@@ -221,34 +231,23 @@ void Game::colision(){
 void Game::draw() const
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glLoadIdentity();									// Reset The Current Modelview Matrix
-	//*********/**/**/ CAMERA /**/**/**/***********//
-	// use this function for opengl target camera
-	
+	glLoadIdentity();
+
 	gluLookAt(objCamera.mPos.x,  objCamera.mPos.y,  objCamera.mPos.z,	
 			  objCamera.mView.x, objCamera.mView.y, objCamera.mView.z,	
 			  objCamera.mUp.x,   objCamera.mUp.y,   objCamera.mUp.z);
 	
-	//glLoadIdentity();
-	drawTunnel();
-
-	/*Draw a point vision
-	glColor3f(1.0, 1.0, 1.0);
-	glBegin(GL_POLYGON);	
-		glNormal3f( 0.0, 0.0, -1.0);	
-		glVertex3f( 0.15, -0.65, view );
-		glVertex3f( 0.15, -0.35, view );
-		glVertex3f( -0.15, -0.35, view );
-		glVertex3f( -0.15, -0.65, view );
-	glEnd();
-	*/
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	drawTunnel(false);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	drawTunnel(true);
 }
 
 // Remove the quads out of view and create new's in the finish tunnel
 void Game::rebuildMap() const{
 
 	int lastInvalid = 0;
-	for (int i=0; i<20; i++){
+	for (int i=0; i<sA; i++){
 		if((objCamera.mPos.z) < buffer[i].z){
 			lastInvalid = i;
 		}
@@ -260,27 +259,35 @@ void Game::rebuildMap() const{
 
 	if (lastInvalid > 0){
 		int c = 0;
-		for (int i=lastInvalid; i<20; i++){
+		for (int i=lastInvalid; i<sA; i++){
 		
 			buffer[c] = buffer[i];
 			color[c] = color[i];
 			c++;
 		}
 
-		for (int i=c; i<20; i++){
+		for (int i=c; i<sA; i++){
 			generateRing(i);
 		}
 	}
 }
 
-void Game::drawObstacle(int position) const{
+void Game::drawObstacle(int position, bool border) const{
 
 	int local = buffer[position].x;
 	
 	float _end = buffer[position].y;
 	float _endLast = buffer[position].z;
 
-	glColor3f(color[position].x, color[position].y, color[position].z); 
+	if (border){
+		float ambient[] = {0, 0, 0, 1.0};
+		glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, ambient);
+	}
+	else{
+		float ambient[] = {color[position].x, color[position].y, color[position].z, 1.0};
+		glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, ambient);
+	}
+
 	switch (local){
 		
 		// Cube normal
@@ -288,7 +295,6 @@ void Game::drawObstacle(int position) const{
 			// FRONT
 			glBegin(GL_POLYGON);
 					
-				glNormal3f( 0.0, 0.0, -1.0);	
 				glVertex3f( 0.15, -0.65, _end );
 				glVertex3f( 0.15, -0.35, _end );
 				glVertex3f( -0.15, -0.35, _end );
@@ -297,7 +303,6 @@ void Game::drawObstacle(int position) const{
 
 			// LEFT
 			glBegin(GL_POLYGON);
-				glNormal3f( -1.0, 0.0, 0.0);
 				glVertex3f( -0.15, -0.65, _end );
 				glVertex3f( -0.15, -0.65, _endLast );
 				glVertex3f( -0.15, -0.35, _endLast );
@@ -306,7 +311,6 @@ void Game::drawObstacle(int position) const{
 
 			// RIGHT
 			glBegin(GL_POLYGON);
-				glNormal3f( 1.0, 0.0, 0.0);
 				glVertex3f( 0.15, -0.65, _end );
 				glVertex3f( 0.15, -0.65, _endLast );
 				glVertex3f( 0.15, -0.35, _endLast );
@@ -315,7 +319,6 @@ void Game::drawObstacle(int position) const{
 
 			// TOP
 			glBegin(GL_POLYGON);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0.15, -0.35, _end );
 				glVertex3f( 0.15, -0.35, _endLast );
 				glVertex3f( -0.15, -0.35, _endLast );
@@ -325,7 +328,6 @@ void Game::drawObstacle(int position) const{
 		
 		case 2:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( -0.1, -0.3, _end );
 				glVertex3f( -0.15, -0.65, _end );
 				glVertex3f( -0.15, -0.65, _endLast );
@@ -337,7 +339,6 @@ void Game::drawObstacle(int position) const{
 
 		case 3:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0, 0, _end );
 				glVertex3f( -0.45, -0.45, _end );
 				glVertex3f( -0.45, -0.45, _endLast );
@@ -351,8 +352,6 @@ void Game::drawObstacle(int position) const{
 		case 4:
 			// FRONT
 			glBegin(GL_POLYGON);
-				glColor3f( 1.0, 1.0, 1.0 );
-				glNormal3f( 0.0, 0.0, -1.0);	
 				glVertex3f( -0.65, -0.15, _end );
 				glVertex3f( -0.35, -0.15, _end );
 				glVertex3f( -0.35, 0.15, _end );
@@ -361,7 +360,6 @@ void Game::drawObstacle(int position) const{
 	
 			// LEFT
 			glBegin(GL_POLYGON);
-				glNormal3f( -1.0, 0.0, 0.0);
 				glVertex3f( -0.35, 0.15, _end );
 				glVertex3f( -0.35, 0.15, _endLast );
 				glVertex3f( -0.65, 0.15, _endLast );
@@ -370,7 +368,6 @@ void Game::drawObstacle(int position) const{
 
 			// RIGHT
 			glBegin(GL_POLYGON);
-				glNormal3f( 1.0, 0.0, 0.0);
 				glVertex3f( -0.35, -0.15, _end );
 				glVertex3f( -0.35, -0.15, _endLast );
 				glVertex3f( -0.65, -0.15, _endLast );
@@ -379,7 +376,6 @@ void Game::drawObstacle(int position) const{
 
 			// TOP
 			glBegin(GL_POLYGON);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( -0.35, -0.15, _end );
 				glVertex3f( -0.35, -0.15, _endLast );
 				glVertex3f( -0.35, 0.15, _endLast );
@@ -389,7 +385,6 @@ void Game::drawObstacle(int position) const{
 
 		case 5:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0, 0, _end );
 				glVertex3f( -0.65, 0.15, _end );
 				glVertex3f( -0.65, 0.15, _endLast );
@@ -401,7 +396,6 @@ void Game::drawObstacle(int position) const{
 
 		case 6: 
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( -0.1, 0.3, _end );
 				glVertex3f( -0.45, 0.45, _end );
 				glVertex3f( -0.45, 0.45, _endLast );
@@ -414,8 +408,6 @@ void Game::drawObstacle(int position) const{
 		// Cube normal in 180º
 		case 7:
 			glBegin(GL_POLYGON);
-				glColor3f( 1.0, 1.0, 1.0 );
-				glNormal3f( 0.0, 0.0, -1.0);	
 				glVertex3f( -0.15, 0.65, _end );
 				glVertex3f( 0.15, 0.65, _end );
 				glVertex3f( 0.15, 0.35, _end );
@@ -424,7 +416,6 @@ void Game::drawObstacle(int position) const{
 
 			// LEFT
 			glBegin(GL_POLYGON);
-				glNormal3f( -1.0, 0.0, 0.0);
 				glVertex3f( 0.15, 0.35, _end );
 				glVertex3f( 0.15, 0.35, _endLast );
 				glVertex3f( 0.15, 0.65, _endLast );
@@ -433,7 +424,6 @@ void Game::drawObstacle(int position) const{
 
 			// RIGHT
 			glBegin(GL_POLYGON);
-				glNormal3f( 1.0, 0.0, 0.0);
 				glVertex3f( -0.15, 0.35, _end );
 				glVertex3f( -0.15, 0.35, _endLast );
 				glVertex3f( -0.15, 0.65, _endLast );
@@ -442,7 +432,6 @@ void Game::drawObstacle(int position) const{
 
 			// TOP
 			glBegin(GL_POLYGON);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0.15, 0.35, _end );
 				glVertex3f( 0.15, 0.35, _endLast );
 				glVertex3f( -0.15, 0.35, _endLast );
@@ -452,7 +441,6 @@ void Game::drawObstacle(int position) const{
 
 		case 8:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0, 0, _end );
 				glVertex3f( 0.45, 0.45, _end );
 				glVertex3f( 0.45, 0.45, _endLast );
@@ -464,7 +452,6 @@ void Game::drawObstacle(int position) const{
 
 		case 9:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0.3, 0.1, _end );
 				glVertex3f( 0.65, 0.15, _end );
 				glVertex3f( 0.65, 0.15, _endLast );
@@ -478,8 +465,6 @@ void Game::drawObstacle(int position) const{
 		case 10:
 			// FRONT
 			glBegin(GL_POLYGON);
-				glColor3f( 1.0, 1.0, 1.0 );
-				glNormal3f( 0.0, 0.0, -1.0);	
 				glVertex3f( 0.65, -0.15, _end );
 				glVertex3f( 0.65, 0.15, _end );
 				glVertex3f( 0.35, 0.15, _end );
@@ -488,7 +473,6 @@ void Game::drawObstacle(int position) const{
 
 			// LEFT
 			glBegin(GL_POLYGON);
-				glNormal3f( -1.0, 0.0, 0.0);
 				glVertex3f( 0.65, -0.15, _end );
 				glVertex3f( 0.65, -0.15, _endLast );
 				glVertex3f( 0.35, -0.15, _endLast );
@@ -497,7 +481,6 @@ void Game::drawObstacle(int position) const{
 
 			// RIGHT
 			glBegin(GL_POLYGON);
-				glNormal3f( 1.0, 0.0, 0.0);
 				glVertex3f( 0.65, 0.15, _end );
 				glVertex3f( 0.65, 0.15, _endLast );
 				glVertex3f( 0.35, 0.15, _endLast );
@@ -506,7 +489,6 @@ void Game::drawObstacle(int position) const{
 
 			// TOP
 			glBegin(GL_POLYGON);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0.35, -0.15, _end );
 				glVertex3f( 0.35, -0.15, _endLast );
 				glVertex3f( 0.35, 0.15, _endLast );
@@ -516,7 +498,6 @@ void Game::drawObstacle(int position) const{
 
 		case 11:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0, 0, _end );
 				glVertex3f( 0.65, -0.15, _end );
 				glVertex3f( 0.65, -0.15, _endLast );
@@ -528,7 +509,6 @@ void Game::drawObstacle(int position) const{
 
 		case 12:
 			glBegin(GL_TRIANGLE_FAN);
-				glNormal3f( 0.0, 0.0, -1.0);
 				glVertex3f( 0.1, -0.3, _end );
 				glVertex3f( 0.45, -0.45, _end );
 				glVertex3f( 0.45, -0.45, _endLast );
@@ -543,8 +523,6 @@ void Game::drawObstacle(int position) const{
 
 			// FRONT
 			glBegin(GL_POLYGON);
-				glColor3f( 1.0, 1.0, 1.0 );
-				glNormal3f( 0.0, 0.0, -1.0);	
 				glVertex3f( 0.15, -0.65, _end );
 				glVertex3f( 0.15, 0.65, _end );
 				glVertex3f( -0.15, 0.65, _end );
@@ -553,7 +531,6 @@ void Game::drawObstacle(int position) const{
 
 			// LEFT
 			glBegin(GL_POLYGON);
-				glNormal3f( -1.0, 0.0, 0.0);
 				glVertex3f( -0.15, -0.65, _end );
 				glVertex3f( -0.15, -0.65, _endLast );
 				glVertex3f( -0.15, 0.65, _endLast );
@@ -562,7 +539,6 @@ void Game::drawObstacle(int position) const{
 
 			// RIGHT
 			glBegin(GL_POLYGON);
-				glNormal3f( 1.0, 0.0, 0.0);
 				glVertex3f( 0.15, -0.65, _end );
 				glVertex3f( 0.15, -0.65, _endLast );
 				glVertex3f( 0.15, 0.65, _endLast );
@@ -574,8 +550,6 @@ void Game::drawObstacle(int position) const{
 		case 14:
 			// TOP
 			glBegin(GL_POLYGON);
-				glColor3f( 1.0, 1.0, 1.0 );
-				glNormal3f( 0.0, 0.0, -1.0);	
 				glVertex3f( -0.65, -0.15, _end );
 				glVertex3f( 0.65, -0.15, _end );
 				glVertex3f( 0.65, 0.15, _end );
@@ -584,7 +558,6 @@ void Game::drawObstacle(int position) const{
 	
 			// LEFT
 			glBegin(GL_POLYGON);
-				glNormal3f( -1.0, 0.0, 0.0);
 				glVertex3f( 0.65, 0.15, _end );
 				glVertex3f( 0.65, 0.15, _endLast );
 				glVertex3f( -0.65, 0.15, _endLast );
@@ -593,7 +566,6 @@ void Game::drawObstacle(int position) const{
 
 			// RIGHT
 			glBegin(GL_POLYGON);
-				glNormal3f( 1.0, 0.0, 0.0);
 				glVertex3f( 0.65, -0.15, _end );
 				glVertex3f( 0.65, -0.15, _endLast );
 				glVertex3f( -0.65, -0.15, _endLast );
@@ -605,7 +577,7 @@ void Game::drawObstacle(int position) const{
 
 void Game::generateMap()  const{
 
-	for (int i=0; i<20; i++){
+	for (int i=0; i<sA; i++){
 		generateRing(i);
 	}
 }
@@ -615,7 +587,7 @@ void Game::generateRing(int i) const{
 	color[i].y = (float)rand()/((float)RAND_MAX/1.0f);
 	color[i].z = (float)rand()/((float)RAND_MAX/1.0f);
 
-	if( rand()/(RAND_MAX/10) >= 7 )
+	if( rand()/(RAND_MAX/10) >= 8 )
 		buffer[i].x = (float)rand()/((float)RAND_MAX/15.0f);
 	else
 		buffer[i].x = 0;
@@ -627,27 +599,40 @@ void Game::generateRing(int i) const{
 	lastEnd -= 0.5f;
 }
 
-void Game::drawTunnel() const
+void Game::drawTunnel(bool border) const
 {
+	glPushMatrix();
+
 	float _end = 0;
 	float _endLast = 0;
 
 	float black[] = {0.0, 0.0, 0.0, 1.0};
 	float green[] = {0.0, 1.0, 0.0, 1.0};
 	float white[] = {1.0, 1.0, 1.0, 1.0};
+	
+	/*
 	glMaterialfv(GL_FRONT, GL_AMBIENT, green);
 	glMaterialfv(GL_FRONT, GL_DIFFUSE, green);
 	glMaterialfv(GL_FRONT, GL_SPECULAR, white);
 	glMaterialf(GL_FRONT, GL_SHININESS, 50.0);
+	*/
 
 	//glRotatef(20.0f, rotate, 0.0f, 0.0f);
 	glRotatef(rotate, 0, 0, 1);
-	for(int i=0; i<20; i++){
+	for(int i=0; i<sA; i++){
 		_end = buffer[i].y;
 		_endLast = buffer[i].z;
 
-		glColor3f(color[i].x, color[i].y, color[i].z); 
-		//printf("Draw in color %f %f %f \n", color[i].x, color[i].y, color[i].z);
+		if (border){
+			float ambient[] = {0, 0, 0, 1.0};
+			glMaterialfv(GL_FRONT, GL_AMBIENT_AND_DIFFUSE, ambient);
+		} 
+		else{
+			float ambient[] = {color[i].x, color[i].y, color[i].z, 1.0};
+			glMaterialfv(GL_FRONT_AND_BACK, GL_AMBIENT_AND_DIFFUSE, ambient);
+			//glColor3f(color[position].x, color[position].y, color[position].z); 
+		}
+
 		glBegin(GL_QUAD_STRIP);
 			//1
 			glVertex3f(0.15f, -0.65f, _end);
@@ -703,8 +688,10 @@ void Game::drawTunnel() const
 		glEnd();
 
 		if (buffer[i].x > 0)
-			drawObstacle(i);
+			drawObstacle(i, border);
+
 	}
+	glPopMatrix();
 }
 
 void Game::teardown()

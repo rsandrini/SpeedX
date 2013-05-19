@@ -18,10 +18,10 @@ class Game : public GameSteps
         virtual void draw() const;
 		virtual bool ended() { return exit; }
         virtual void teardown();
-		void drawTunnel() const;
+		void drawTunnel(bool border) const;
 		void generateMap() const;
 		void rebuildMap() const;
-		void drawObstacle(int position) const;
+		void drawObstacle(int position, bool border) const;
 		void generateRing(int i) const;
 		void colision();
 };
